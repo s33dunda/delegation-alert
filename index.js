@@ -20,30 +20,49 @@ const request = (body, options, protocal_method, customCatch) => {
     });
 };
 
+const options = {
+    headers: {
+        "Content-Type": 'application/json',
+        authorization: 'Basic ' + new Buffer('verify-domain-lambda:' + process.env.CP_API_KEY  ).toString('base64')
+    },
+    hostname: "dev.centralpark.2u.com",
+    ssl: true,
+    port: '443',
+    path: '/graphql',
+    method: 'POST'
+};
+
 exports.forward_delegation_alert = (event, context, callback) => {
     const dns = event.check_params.hostname.replace('pingdom.', '');
     const date_of_delegation = new Date().toISOString().slice(0, 19) + 'Z';
-    const body = () => {
-        const query = {dnsDomain:[{name:  dns, delegationDate: date_of_delegation }]};
+
+    const queryBody = () => {
+        const query = `query date { dnsDomains(name: \"${dns}\") { delegationDate }}`;
         return {
-            query: "mutation UpdateDateOfDelegation($entities: JSON!) { update(entities: $entities) }",
-            variables: { entities: JSON.stringify(query) }
+            query: query,
+            variables: null
         };
     };
-    const options = {
-        headers: {
-            "Content-Type": 'application/json',
-            authorization: 'Basic ' + new Buffer('verify-domain-lambda:' + process.env.CP_API_KEY  ).toString('base64')
-        },
-        hostname: "dev.centralpark.2u.com",
-        ssl: true,
-        port: '443',
-        path: '/graphql',
-        method: 'POST'
-    };
-    console.log(JSON.stringify(body()));
 
-    return request(JSON.stringify(body()), options, 'https').then(resp => callback(null, resp));
+    const mutationBody = () => {
+        const mutation = {dnsDomain:[{name:  dns, delegationDate: date_of_delegation }]};
+        return {
+            query: "mutation UpdateDateOfDelegation($entities: JSON!) { update(entities: $entities) }",
+            variables: { entities: JSON.stringify(mutation) }
+        };
+    };
+
+    return request(JSON.stringify(queryBody()), options, 'https')
+        .then(resp =>  {
+            const isDelegated = resp.data.dnsDomains[0].delegationDate;
+            if (isDelegated) {
+                console.log('[INFO] Already Delegated. Exiting...');
+                callback(null, resp);
+            } else {
+                console.log('[INFO] Sending Delegation Date to Central Park...');
+                request(JSON.stringify(mutationBody()), options, 'https').then(resp => callback(null, resp));
+            }
+        });
 };
 
 
