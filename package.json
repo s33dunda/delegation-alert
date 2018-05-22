@@ -1,0 +1,8 @@
+{
+  "name": "delegation-alert",
+  "version": "1.0.0",
+  "description": "alerts centralpark of a dns delagation",
+  "main": "index.js",
+  "author": "Jbern16 <jbern16@gmail.com>",
+  "license": "MIT"
+}
