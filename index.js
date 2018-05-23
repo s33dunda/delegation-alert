@@ -25,7 +25,7 @@ const options = {
         "Content-Type": 'application/json',
         authorization: 'Basic ' + new Buffer('verify-domain-lambda:' + process.env.CP_API_KEY  ).toString('base64')
     },
-    hostname: "dev.centralpark.2u.com",
+    hostname: process.env.CP_DOMAIN,
     ssl: true,
     port: '443',
     path: '/graphql',
