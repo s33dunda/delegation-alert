@@ -1,6 +1,6 @@
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "./index.js"
+  source_file  = "index.js"
   output_path = "index.zip"
 }
 
@@ -22,6 +22,10 @@ variable "environment" {
   }
 }
 
+data "vault_generic_secret" "api_token" {
+  path = "${lookup(var.environment, "${terraform.workspace}.vault_path")}"
+}
+
 resource "aws_lambda_function" "centralpark_delegation_alert" {
   function_name = "${var.delegation_alert_function_name}_${terraform.workspace}"
   description   = "alerts centralpark when dns was delegated"
@@ -30,7 +34,7 @@ resource "aws_lambda_function" "centralpark_delegation_alert" {
   source_code_hash = "${data.archive_file.lambda_zip.output_base64sha256}"
   runtime          = "nodejs6.10"
   memory_size      = "512"
-  role             = "${module.lambda_insert_role.arn}"
+  role             = "${module.lambda_delegation_alert_role.arn}"
   handler          = "index.forward_delegation_alert"
   timeout          = 300
 
@@ -41,4 +45,12 @@ resource "aws_lambda_function" "centralpark_delegation_alert" {
       "CP_DOMAIN"  = "${lookup(var.environment, "${terraform.workspace}.centralpark_domain")}"
     }
   }
+}
+
+module "lambda_delegation_alert_role" {
+  source                  = "github.com/2uinc/centralpark//aws/modules/centralpark-lambda-role"
+  env                     = "${terraform.workspace}"
+  role_name               = "${var.delegation_alert_function_name}_${terraform.workspace}"
+  lambda_arn              = "${aws_lambda_function.centralpark_delegation_alert.arn}"
+
 }
