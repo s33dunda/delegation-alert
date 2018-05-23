@@ -3,4 +3,5 @@ deploy.env
 context.json
 event_sources.json
 node_modules/
+.terraform/
 
